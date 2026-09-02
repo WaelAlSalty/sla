@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>O Passageiro Clandestino</title>
+    <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+
+        body {
+            background-color: #0f172a;
+            color: #f8fafc;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 16px;
+        }
+
+        .app-container {
+            width: 100%;
+            max-width: 420px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 1.8rem;
+            color: #38bdf8;
+            letter-spacing: 1px;
+        }
+
+        .card {
+            background-color: #1e293b;
+            border-radius: 12px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            border: 1px solid #334155;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        label {
+            font-size: 0.85rem;
+            color: #94a3b8;
+        }
+
+        input {
+            background-color: #0f172a;
+            border: 1px solid #475569;
+            padding: 10px 14px;
+            border-radius: 8px;
+            color: #fff;
+            font-size: 1rem;
+            outline: none;
+        }
+
+        input:focus {
+            border-color: #38bdf8;
+        }
+
+        .btn {
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        .btn:active {
+            opacity: 0.8;
+        }
+
+        .btn-primary { background-color: #38bdf8; color: #0f172a; }
+        .btn-secondary { background-color: #64748b; color: #fff; }
+        .btn-success { background-color: #22c55e; color: #0f172a; }
+        .btn-warning { background-color: #f59e0b; color: #0f172a; }
+        .btn-danger { background-color: #ef4444; color: #fff; }
+
+        .btn-small {
+            padding: 4px 8px;
+            background-color: #334155;
+            border: 1px solid #475569;
+            color: #f8fafc;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            cursor: pointer;
+        }
+
+        .divider {
+            text-align: center;
+            color: #64748b;
+            font-size: 0.85rem;
+            margin: 4px 0;
+        }
+
+        .room-info {
+            background-color: #0f172a;
+            padding: 10px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 0.9rem;
+        }
+
+        .voice-status {
+            background-color: #0f172a;
+            padding: 10px;
+            border-radius: 6px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            font-size: 0.85rem;
+        }
+
+        .players-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+
+        .players-list li {
+            background-color: #0f172a;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .secret-card {
+            background-color: #0f172a;
+            border: 2px dashed #475569;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .secret-card.revealed {
+            border-style: solid;
+            border-color: #38bdf8;
+        }
+
+        .timer {
+            text-align: center;
+            font-size: 2rem;
+            font-weight: bold;
+            color: #f59e0b;
+        }
+
+        .tags-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 8px;
+        }
+
+        .tag {
+            background-color: #0f172a;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            color: #cbd5e1;
+            border: 1px solid #334155;
+        }
+
+        .hint-text {
+            font-size: 0.85rem;
+            color: #94a3b8;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <h1>🕵️ Clandestino</h1>
+
+        <section id="screen-auth" class="card">
+            <div class="input-group">
+                <label for="username">Seu Apelido:</label>
+                <input type="text" id="username" placeholder="Digite seu nome..." maxlength="15">
+            </div>
+
+            <button id="btn-create-room" class="btn btn-primary">Criar Nova Sala</button>
+
+            <div class="divider">ou</div>
+
+            <div class="input-group">
+                <label for="room-code-input">Código da Sala:</label>
+                <input type="text" id="room-code-input" placeholder="Cole o código do host..." autocomplete="off">
+            </div>
+            <button id="btn-join-room" class="btn btn-secondary">Entrar na Sala</button>
+        </section>
+
+        <section id="screen-lobby" class="card hidden">
+            <div class="room-info">
+                <span>Código da Sala:</span>
+                <strong id="display-room-code">---</strong>
+                <button id="btn-copy-code" class="btn-small">Copiar</button>
+            </div>
+
+            <div class="voice-status">
+                <p>Status do Microfone: <strong id="mic-status">Desativado</strong></p>
+                <button id="btn-toggle-mic" class="btn btn-warning">Ligar Microfone</button>
+            </div>
+
+            <h3>Jogadores (<span id="player-count">1</span>)</h3>
+            <ul id="players-list" class="players-list"></ul>
+
+            <button id="btn-start-game" class="btn btn-success hidden">Iniciar Partida</button>
+            <p id="wait-host-text" class="hint-text hidden">Aguardando o anfitrião iniciar...</p>
+        </section>
+
+        <section id="screen-game" class="card hidden">
+            <div class="game-header">
+                <div id="game-timer" class="timer">05:00</div>
+            </div>
+
+            <div class="secret-card" id="secret-card">
+                <p class="card-instruction">Toque para revelar seu segredo</p>
+                <div id="secret-content" class="secret-content hidden">
+                    <h2 id="role-title">Você é...</h2>
+                    <p id="location-text">Local: ---</p>
+                    <p id="job-text">Função: ---</p>
+                </div>
+            </div>
+
+            <div class="locations-guide">
+                <h4>Locais Possíveis:</h4>
+                <div id="locations-list" class="tags-container"></div>
+            </div>
+
+            <button id="btn-end-game" class="btn btn-danger hidden">Encerrar Partida</button>
+        </section>
+    </div>
+
+    <div id="audio-container"></div>
+
+    <script>
+        const GAME_LOCATIONS = [
+            { name: "Submarino", roles: ["Capitão", "Engenheiro", "Cozinheiro", "Navegador", "Operador de Sonar"] },
+            { name: "Hospital", roles: ["Cirurgião", "Enfermeiro", "Recepcionista", "Paciente", "Farmacêutico"] },
+            { name: "Estação Espacial", roles: ["Comandante", "Cientista", "Engenheiro de Voo", "Astronauta", "Médico"] },
+            { name: "Cinema", roles: ["Pipoqueiro", "Espectador", "Projetista", "Faxineiro", "Gerente"] },
+            { name: "Avião Comercial", roles: ["Piloto", "Comissária", "Passageiro", "Mecânico", "Copiloto"] },
+            { name: "Restaurante Chique", roles: ["Chef", "Garçom", "Crítico Gastronômico", "Sommelier", "Cliente"] }
+        ];
+
+        let peer = null;
+        let localStream = null;
+        let isHost = false;
+        let myName = "";
+        let roomConnections = [];
+        let audioCalls = [];
+        let players = [];
+        let timerInterval = null;
+
+        const screenAuth = document.getElementById("screen-auth");
+        const screenLobby = document.getElementById("screen-lobby");
+        const screenGame = document.getElementById("screen-game");
+
+        const usernameInput = document.getElementById("username");
+        const roomCodeInput = document.getElementById("room-code-input");
+        const btnCreateRoom = document.getElementById("btn-create-room");
+        const btnJoinRoom = document.getElementById("btn-join-room");
+
+        const displayRoomCode = document.getElementById("display-room-code");
+        const btnCopyCode = document.getElementById("btn-copy-code");
+        const playersList = document.getElementById("players-list");
+        const playerCount = document.getElementById("player-count");
+        const btnStartGame = document.getElementById("btn-start-game");
+        const waitHostText = document.getElementById("wait-host-text");
+
+        const btnToggleMic = document.getElementById("btn-toggle-mic");
+        const micStatus = document.getElementById("mic-status");
+
+        const secretCard = document.getElementById("secret-card");
+        const secretContent = document.getElementById("secret-content");
+        const roleTitle = document.getElementById("role-title");
+        const locationText = document.getElementById("location-text");
+        const jobText = document.getElementById("job-text");
+        const locationsList = document.getElementById("locations-list");
+        const gameTimer = document.getElementById("game-timer");
+        const btnEndGame = document.getElementById("btn-end-game");
+
+        btnCreateRoom.addEventListener("click", () => {
+            myName = usernameInput.value.trim();
+            if (!myName) return alert("Digite um nome!");
+
+            isHost = true;
+            peer = new Peer();
+
+            peer.on("open", (id) => {
+                setupHostLobby(id);
+            });
+
+            setupPeerEvents();
+        });
+
+        btnJoinRoom.addEventListener("click", () => {
+            myName = usernameInput.value.trim();
+            const hostId = roomCodeInput.value.trim();
+
+            if (!myName) return alert("Digite um nome!");
+            if (!hostId) return alert("Cole o código da sala!");
+
+            isHost = false;
+            peer = new Peer();
+
+            peer.on("open", () => {
+                const conn = peer.connect(hostId, { metadata: { name: myName } });
+                setupClientConnection(conn);
+                showLobby(hostId);
+                waitHostText.classList.remove("hidden");
+            });
+
+            setupPeerEvents();
+        });
+
+        btnCopyCode.addEventListener("click", () => {
+            navigator.clipboard.writeText(displayRoomCode.innerText);
+            alert("Código copiado! Envie para seus amigos.");
+        });
+
+        function setupPeerEvents() {
+            peer.on("call", (call) => {
+                call.answer(localStream);
+                call.on("stream", (remoteStream) => {
+                    playRemoteAudio(remoteStream, call.peer);
+                });
+                audioCalls.push(call);
+            });
+
+            peer.on("error", (err) => {
+                console.error("PeerJS Erro:", err);
+                alert("Erro na conexão P2P: " + err.type);
+            });
+        }
+
+        function setupHostLobby(id) {
+            displayRoomCode.innerText = id;
+            btnStartGame.classList.remove("hidden");
+            showLobby(id);
+
+            players.push({ id: id, name: myName, isHost: true });
+            renderPlayers();
+
+            peer.on("connection", (conn) => {
+                roomConnections.push(conn);
+
+                conn.on("open", () => {
+                    players.push({ id: conn.peer, name: conn.metadata.name, isHost: false });
+                    broadcast({ type: "PLAYER_LIST", players: players });
+                    renderPlayers();
+
+                    if (localStream) {
+                        callPeerAudio(conn.peer);
+                    }
+                });
+
+                conn.on("data", (data) => {
+                    handleHostData(data, conn);
+                });
+
+                conn.on("close", () => {
+                    players = players.filter(p => p.id !== conn.peer);
+                    roomConnections = roomConnections.filter(c => c.peer !== conn.peer);
+                    broadcast({ type: "PLAYER_LIST", players: players });
+                    renderPlayers();
+                });
+            });
+        }
+
+        function setupClientConnection(conn) {
+            roomConnections.push(conn);
+
+            conn.on("open", () => {
+                console.log("Conectado ao Host!");
+            });
+
+            conn.on("data", (data) => {
+                handleClientData(data);
+            });
+
+            conn.on("close", () => {
+                alert("A sala foi fechada pelo anfitrião.");
+                window.location.reload();
+            });
+        }
+
+        function broadcast(data) {
+            roomConnections.forEach(conn => {
+                if (conn.open) conn.send(data);
+            });
+        }
+
+        btnToggleMic.addEventListener("click", async () => {
+            if (!localStream) {
+                try {
+                    localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+                    micStatus.innerText = "Ativado 🎙️";
+                    micStatus.style.color = "#22c55e";
+                    btnToggleMic.innerText = "Mutar Microfone";
+                    btnToggleMic.className = "btn btn-danger";
+
+                    if (isHost) {
+                        roomConnections.forEach(c => callPeerAudio(c.peer));
+                    } else {
+                        if (roomConnections[0]) {
+                            callPeerAudio(roomConnections[0].peer);
+                        }
+                    }
+                } catch (err) {
+                    alert("Erro ao acessar microfone: Permissão negada ou conexão não segura (HTTPS necessária).");
+                    console.error(err);
+                }
+            } else {
+                const audioTrack = localStream.getAudioTracks()[0];
+                audioTrack.enabled = !audioTrack.enabled;
+                if (audioTrack.enabled) {
+                    micStatus.innerText = "Ativado 🎙️";
+                    btnToggleMic.innerText = "Mutar Microfone";
+                    btnToggleMic.className = "btn btn-danger";
+                } else {
+                    micStatus.innerText = "Mutado 🔇";
+                    btnToggleMic.innerText = "Desmutar";
+                    btnToggleMic.className = "btn btn-warning";
+                }
+            }
+        });
+
+        function callPeerAudio(peerId) {
+            if (!localStream) return;
+            const call = peer.call(peerId, localStream);
+            call.on("stream", (remoteStream) => {
+                playRemoteAudio(remoteStream, peerId);
+            });
+            audioCalls.push(call);
+        }
+
+        function playRemoteAudio(remoteStream, peerId) {
+            let audioElem = document.getElementById("audio-" + peerId);
+            if (!audioElem) {
+                audioElem = document.createElement("audio");
+                audioElem.id = "audio-" + peerId;
+                audioElem.autoplay = true;
+                document.getElementById("audio-container").appendChild(audioElem);
+            }
+            audioElem.srcObject = remoteStream;
+        }
+
+        btnStartGame.addEventListener("click", () => {
+            if (players.length < 3) {
+                return alert("Necessário no mínimo 3 jogadores para jogar!");
+            }
+
+            const randomLocation = GAME_LOCATIONS[Math.floor(Math.random() * GAME_LOCATIONS.length)];
+            const spyIndex = Math.floor(Math.random() * players.length);
+            const spyId = players[spyIndex].id;
+
+            let availableRoles = [...randomLocation.roles];
+            availableRoles.sort(() => Math.random() - 0.5);
+
+            players.forEach((p, index) => {
+                const isSpy = p.id === spyId;
+                const role = isSpy ? "Clandestino" : (availableRoles[index % availableRoles.length] || "Passageiro");
+                const payload = {
+                    type: "GAME_START",
+                    isSpy: isSpy,
+                    location: isSpy ? "Desconhecido" : randomLocation.name,
+                    role: role,
+                    duration: 300
+                };
+
+                if (p.id === peer.id) {
+                    startGameScreen(payload);
+                } else {
+                    const targetConn = roomConnections.find(c => c.peer === p.id);
+                    if (targetConn) targetConn.send(payload);
+                }
+            });
+
+            btnEndGame.classList.remove("hidden");
+        });
+
+        btnEndGame.addEventListener("click", () => {
+            broadcast({ type: "GAME_END" });
+            endGameScreen();
+        });
+
+        function handleHostData(data, conn) {}
+
+        function handleClientData(data) {
+            if (data.type === "PLAYER_LIST") {
+                players = data.players;
+                renderPlayers();
+            } else if (data.type === "GAME_START") {
+                startGameScreen(data);
+            } else if (data.type === "GAME_END") {
+                endGameScreen();
+            }
+        }
+
+        function showLobby(code) {
+            displayRoomCode.innerText = code;
+            screenAuth.classList.add("hidden");
+            screenLobby.classList.remove("hidden");
+        }
+
+        function renderPlayers() {
+            playerCount.innerText = players.length;
+            playersList.innerHTML = "";
+            players.forEach(p => {
+                const li = document.createElement("li");
+                li.innerText = p.name + (p.isHost ? " 👑" : "");
+                playersList.appendChild(li);
+            });
+        }
+
+        function startGameScreen(info) {
+            screenLobby.classList.add("hidden");
+            screenGame.classList.remove("hidden");
+
+            if (info.isSpy) {
+                roleTitle.innerText = "🕵️ Você é o Clandestino!";
+                roleTitle.style.color = "#ef4444";
+                locationText.innerText = "Local: Descubra onde eles estão!";
+                jobText.innerText = "Mecânica: Não seja descoberto.";
+            } else {
+                roleTitle.innerText = "Passageiro";
+                roleTitle.style.color = "#38bdf8";
+                locationText.innerText = "Local: " + info.location;
+                jobText.innerText = "Função: " + info.role;
+            }
+
+            locationsList.innerHTML = "";
+            GAME_LOCATIONS.forEach(loc => {
+                const span = document.createElement("span");
+                span.className = "tag";
+                span.innerText = loc.name;
+                locationsList.appendChild(span);
+            });
+
+            startTimer(info.duration);
+        }
+
+        function endGameScreen() {
+            clearInterval(timerInterval);
+            screenGame.classList.add("hidden");
+            screenLobby.classList.remove("hidden");
+            secretCard.classList.remove("revealed");
+            secretContent.classList.add("hidden");
+        }
+
+        secretCard.addEventListener("click", () => {
+            secretContent.classList.toggle("hidden");
+            secretCard.classList.toggle("revealed");
+        });
+
+        function startTimer(seconds) {
+            clearInterval(timerInterval);
+            let remaining = seconds;
+
+            timerInterval = setInterval(() => {
+                const mins = Math.floor(remaining / 60);
+                const secs = remaining % 60;
+                gameTimer.innerText = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+
+                if (remaining <= 0) {
+                    clearInterval(timerInterval);
+                    alert("O tempo da rodada acabou! Iniciem a votação.");
+                }
+                remaining--;
+            }, 1000);
+        }
+    </script>
+</body>
+</html>
