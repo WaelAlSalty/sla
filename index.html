@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>O Passageiro Clandestino</title>
+    <title>Duelo Secreto - 2 Jogadores</title>
     <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
     <style>
         * {
@@ -140,8 +140,6 @@
             display: flex;
             flex-direction: column;
             gap: 6px;
-            max-height: 150px;
-            overflow-y: auto;
         }
 
         .players-list li {
@@ -168,9 +166,15 @@
             border-color: #38bdf8;
         }
 
+        .secret-content {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
         .timer {
             text-align: center;
-            font-size: 2rem;
+            font-size: 2.2rem;
             font-weight: bold;
             color: #f59e0b;
         }
@@ -184,9 +188,9 @@
 
         .tag {
             background-color: #0f172a;
-            padding: 4px 8px;
+            padding: 5px 10px;
             border-radius: 4px;
-            font-size: 0.75rem;
+            font-size: 0.8rem;
             color: #cbd5e1;
             border: 1px solid #334155;
         }
@@ -196,12 +200,23 @@
             color: #94a3b8;
             text-align: center;
         }
+
+        .instruction-box {
+            background-color: #0f172a;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            color: #cbd5e1;
+            line-height: 1.4;
+            border-left: 3px solid #38bdf8;
+        }
     </style>
 </head>
 <body>
     <div class="app-container">
-        <h1>🕵️ Clandestino</h1>
+        <h1>🕵️ Duelo Secreto</h1>
 
+        <!-- Tela 1: Conexão -->
         <section id="screen-auth" class="card">
             <div class="input-group">
                 <label for="username">Seu Apelido:</label>
@@ -214,11 +229,12 @@
 
             <div class="input-group">
                 <label for="room-code-input">Código da Sala:</label>
-                <input type="text" id="room-code-input" placeholder="Cole o código do host..." autocomplete="off">
+                <input type="text" id="room-code-input" placeholder="Cole o código do adversário..." autocomplete="off">
             </div>
             <button id="btn-join-room" class="btn btn-secondary">Entrar na Sala</button>
         </section>
 
+        <!-- Tela 2: Sala de Espera / Lobby -->
         <section id="screen-lobby" class="card hidden">
             <div class="room-info">
                 <span>Código da Sala:</span>
@@ -227,37 +243,43 @@
             </div>
 
             <div class="voice-status">
-                <p>Status do Microfone: <strong id="mic-status">Desativado</strong></p>
-                <button id="btn-toggle-mic" class="btn btn-warning">Ligar Microfone</button>
+                <p>Status da Voz: <strong id="mic-status">Microfone Desativado</strong></p>
+                <button id="btn-toggle-mic" class="btn btn-warning">Ativar Microfone</button>
             </div>
 
-            <h3>Jogadores (<span id="player-count">1</span>)</h3>
+            <h3>Jogadores Conectados (<span id="player-count">1</span>/2)</h3>
             <ul id="players-list" class="players-list"></ul>
 
-            <button id="btn-start-game" class="btn btn-success hidden">Iniciar Partida</button>
-            <p id="wait-host-text" class="hint-text hidden">Aguardando o anfitrião iniciar...</p>
+            <button id="btn-start-game" class="btn btn-success hidden">Iniciar Partida (2/2)</button>
+            <p id="wait-host-text" class="hint-text hidden">Aguardando o anfitrião iniciar a partida...</p>
         </section>
 
+        <!-- Tela 3: Jogo 1x1 -->
         <section id="screen-game" class="card hidden">
             <div class="game-header">
-                <div id="game-timer" class="timer">05:00</div>
+                <div id="game-timer" class="timer">03:00</div>
+            </div>
+
+            <div class="instruction-box" id="game-objective">
+                Carregando missão...
             </div>
 
             <div class="secret-card" id="secret-card">
-                <p class="card-instruction">Toque para revelar seu segredo</p>
+                <p class="card-instruction" id="card-tap-notice">Toque para ver seus dados secretos</p>
                 <div id="secret-content" class="secret-content hidden">
-                    <h2 id="role-title">Você é...</h2>
+                    <h2 id="role-title">Identidade</h2>
                     <p id="location-text">Local: ---</p>
-                    <p id="job-text">Função: ---</p>
+                    <p id="job-text">Dica / Palavra-Chave: ---</p>
                 </div>
             </div>
 
             <div class="locations-guide">
-                <h4>Locais Possíveis:</h4>
+                <h4>Locais Catalogados no Mapa:</h4>
                 <div id="locations-list" class="tags-container"></div>
             </div>
 
-            <button id="btn-end-game" class="btn btn-danger hidden">Encerrar Partida</button>
+            <button id="btn-toggle-mic-game" class="btn btn-warning">Ativar Microfone</button>
+            <button id="btn-end-game" class="btn btn-danger hidden">Terminar Rodada</button>
         </section>
     </div>
 
@@ -265,20 +287,23 @@
 
     <script>
         const GAME_LOCATIONS = [
-            { name: "Submarino", roles: ["Capitão", "Engenheiro", "Cozinheiro", "Navegador", "Operador de Sonar"] },
-            { name: "Hospital", roles: ["Cirurgião", "Enfermeiro", "Recepcionista", "Paciente", "Farmacêutico"] },
-            { name: "Estação Espacial", roles: ["Comandante", "Cientista", "Engenheiro de Voo", "Astronauta", "Médico"] },
-            { name: "Cinema", roles: ["Pipoqueiro", "Espectador", "Projetista", "Faxineiro", "Gerente"] },
-            { name: "Avião Comercial", roles: ["Piloto", "Comissária", "Passageiro", "Mecânico", "Copiloto"] },
-            { name: "Restaurante Chique", roles: ["Chef", "Garçom", "Crítico Gastronômico", "Sommelier", "Cliente"] }
+            { name: "Submarino", password: "Sonar Profundo", hint: "Muita pressão e sem janelas" },
+            { name: "Hospital", password: "Plantão Noturno", hint: "Cheiro de remédio e jalecos" },
+            { name: "Estação Espacial", password: "Gravidade Zero", hint: "Visão privilegiada do planeta" },
+            { name: "Cinema", password: "Pipoca com Manteiga", hint: "Sala escura e tela gigante" },
+            { name: "Avião Comercial", password: "Caixa Preta", hint: "Turbulência e cinto de segurança" },
+            { name: "Restaurante Chique", password: "Menu Degustação", hint: "Pratos pequenos e talheres demais" },
+            { name: "Cassino", password: "Roleta Russa", hint: "Fichas, cartas e sem relógio" },
+            { name: "Banco Central", password: "Cofre Forte", hint: "Câmeras e portas blindadas" }
         ];
 
         let peer = null;
         let localStream = null;
         let isHost = false;
         let myName = "";
-        let roomConnections = [];
-        let audioCalls = [];
+        let hostConnection = null; // Conexão se cliente
+        let clientConnection = null; // Conexão se host
+        let audioCall = null;
         let players = [];
         let timerInterval = null;
 
@@ -299,6 +324,7 @@
         const waitHostText = document.getElementById("wait-host-text");
 
         const btnToggleMic = document.getElementById("btn-toggle-mic");
+        const btnToggleMicGame = document.getElementById("btn-toggle-mic-game");
         const micStatus = document.getElementById("mic-status");
 
         const secretCard = document.getElementById("secret-card");
@@ -306,56 +332,58 @@
         const roleTitle = document.getElementById("role-title");
         const locationText = document.getElementById("location-text");
         const jobText = document.getElementById("job-text");
+        const cardTapNotice = document.getElementById("card-tap-notice");
         const locationsList = document.getElementById("locations-list");
         const gameTimer = document.getElementById("game-timer");
+        const gameObjective = document.getElementById("game-objective");
         const btnEndGame = document.getElementById("btn-end-game");
 
         btnCreateRoom.addEventListener("click", () => {
             myName = usernameInput.value.trim();
-            if (!myName) return alert("Digite um nome!");
+            if (!myName) return alert("Digite seu nome!");
 
             isHost = true;
             peer = new Peer();
 
             peer.on("open", (id) => {
-                setupHostLobby(id);
+                setupHost(id);
             });
 
-            setupPeerEvents();
+            setupPeerAudioEvents();
         });
 
         btnJoinRoom.addEventListener("click", () => {
             myName = usernameInput.value.trim();
             const hostId = roomCodeInput.value.trim();
 
-            if (!myName) return alert("Digite um nome!");
+            if (!myName) return alert("Digite seu nome!");
             if (!hostId) return alert("Cole o código da sala!");
 
             isHost = false;
             peer = new Peer();
 
             peer.on("open", () => {
-                const conn = peer.connect(hostId, { metadata: { name: myName } });
-                setupClientConnection(conn);
+                hostConnection = peer.connect(hostId, { metadata: { name: myName } });
+                setupClient(hostConnection);
                 showLobby(hostId);
                 waitHostText.classList.remove("hidden");
             });
 
-            setupPeerEvents();
+            setupPeerAudioEvents();
         });
 
         btnCopyCode.addEventListener("click", () => {
             navigator.clipboard.writeText(displayRoomCode.innerText);
-            alert("Código copiado! Envie para seus amigos.");
+            alert("Código copiado! Envie para o segundo jogador.");
         });
 
-        function setupPeerEvents() {
+        function setupPeerAudioEvents() {
             peer.on("call", (call) => {
+                audioCall = call;
                 call.answer(localStream);
                 call.on("stream", (remoteStream) => {
-                    playRemoteAudio(remoteStream, call.peer);
+                    playRemoteAudio(remoteStream);
                 });
-                audioCalls.push(call);
             });
 
             peer.on("error", (err) => {
@@ -364,112 +392,140 @@
             });
         }
 
-        function setupHostLobby(id) {
+        function setupHost(id) {
             displayRoomCode.innerText = id;
-            btnStartGame.classList.remove("hidden");
             showLobby(id);
 
-            players.push({ id: id, name: myName, isHost: true });
+            players = [{ id: id, name: myName, isHost: true }];
             renderPlayers();
 
             peer.on("connection", (conn) => {
-                roomConnections.push(conn);
+                if (clientConnection) {
+                    conn.close();
+                    return;
+                }
+
+                clientConnection = conn;
 
                 conn.on("open", () => {
                     players.push({ id: conn.peer, name: conn.metadata.name, isHost: false });
-                    broadcast({ type: "PLAYER_LIST", players: players });
+                    sendToClient({ type: "PLAYER_LIST", players: players });
                     renderPlayers();
+                    checkStartCondition();
 
                     if (localStream) {
-                        callPeerAudio(conn.peer);
+                        callRemoteAudio(conn.peer);
                     }
                 });
 
                 conn.on("data", (data) => {
-                    handleHostData(data, conn);
+                    // Mensagens recebidas do cliente se necessário
                 });
 
                 conn.on("close", () => {
                     players = players.filter(p => p.id !== conn.peer);
-                    roomConnections = roomConnections.filter(c => c.peer !== conn.peer);
-                    broadcast({ type: "PLAYER_LIST", players: players });
+                    clientConnection = null;
                     renderPlayers();
+                    checkStartCondition();
+                    alert("O segundo jogador saiu.");
                 });
             });
         }
 
-        function setupClientConnection(conn) {
-            roomConnections.push(conn);
-
+        function setupClient(conn) {
             conn.on("open", () => {
-                console.log("Conectado ao Host!");
+                console.log("Conectado ao Anfitrião!");
             });
 
             conn.on("data", (data) => {
-                handleClientData(data);
+                if (data.type === "PLAYER_LIST") {
+                    players = data.players;
+                    renderPlayers();
+                } else if (data.type === "GAME_START") {
+                    startGameScreen(data);
+                } else if (data.type === "GAME_END") {
+                    endGameScreen();
+                }
             });
 
             conn.on("close", () => {
-                alert("A sala foi fechada pelo anfitrião.");
+                alert("A sala foi encerrada pelo anfitrião.");
                 window.location.reload();
             });
         }
 
-        function broadcast(data) {
-            roomConnections.forEach(conn => {
-                if (conn.open) conn.send(data);
-            });
+        function sendToClient(data) {
+            if (clientConnection && clientConnection.open) {
+                clientConnection.send(data);
+            }
         }
 
-        btnToggleMic.addEventListener("click", async () => {
+        function checkStartCondition() {
+            if (isHost) {
+                if (players.length === 2) {
+                    btnStartGame.classList.remove("hidden");
+                } else {
+                    btnStartGame.classList.add("hidden");
+                }
+            }
+        }
+
+        async function toggleMicrophone() {
             if (!localStream) {
                 try {
                     localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-                    micStatus.innerText = "Ativado 🎙️";
-                    micStatus.style.color = "#22c55e";
-                    btnToggleMic.innerText = "Mutar Microfone";
-                    btnToggleMic.className = "btn btn-danger";
+                    updateMicUI(true);
 
-                    if (isHost) {
-                        roomConnections.forEach(c => callPeerAudio(c.peer));
-                    } else {
-                        if (roomConnections[0]) {
-                            callPeerAudio(roomConnections[0].peer);
-                        }
+                    const targetPeerId = isHost 
+                        ? (clientConnection ? clientConnection.peer : null) 
+                        : (hostConnection ? hostConnection.peer : null);
+
+                    if (targetPeerId) {
+                        callRemoteAudio(targetPeerId);
                     }
                 } catch (err) {
-                    alert("Erro ao acessar microfone: Permissão negada ou conexão não segura (HTTPS necessária).");
+                    alert("Não foi possível acessar o microfone. Verifique as permissões do navegador e se a conexão é HTTPS.");
                     console.error(err);
                 }
             } else {
-                const audioTrack = localStream.getAudioTracks()[0];
-                audioTrack.enabled = !audioTrack.enabled;
-                if (audioTrack.enabled) {
-                    micStatus.innerText = "Ativado 🎙️";
-                    btnToggleMic.innerText = "Mutar Microfone";
-                    btnToggleMic.className = "btn btn-danger";
-                } else {
-                    micStatus.innerText = "Mutado 🔇";
-                    btnToggleMic.innerText = "Desmutar";
-                    btnToggleMic.className = "btn btn-warning";
-                }
+                const track = localStream.getAudioTracks()[0];
+                track.enabled = !track.enabled;
+                updateMicUI(track.enabled);
             }
-        });
-
-        function callPeerAudio(peerId) {
-            if (!localStream) return;
-            const call = peer.call(peerId, localStream);
-            call.on("stream", (remoteStream) => {
-                playRemoteAudio(remoteStream, peerId);
-            });
-            audioCalls.push(call);
         }
 
-        function playRemoteAudio(remoteStream, peerId) {
-            let audioElem = document.getElementById("audio-" + peerId);
+        function updateMicUI(isActive) {
+            const label = isActive ? "Mutar Microfone" : "Ativar Microfone";
+            const btnClass = isActive ? "btn btn-danger" : "btn btn-warning";
+            const statusText = isActive ? "Microfone Aberto 🎙️" : "Microfone Mutado 🔇";
+            const statusColor = isActive ? "#22c55e" : "#f59e0b";
+
+            btnToggleMic.innerText = label;
+            btnToggleMic.className = btnClass;
+            btnToggleMicGame.innerText = label;
+            btnToggleMicGame.className = btnClass;
+
+            micStatus.innerText = statusText;
+            micStatus.style.color = statusColor;
+        }
+
+        btnToggleMic.addEventListener("click", toggleMicrophone);
+        btnToggleMicGame.addEventListener("click", toggleMicrophone);
+
+        function callRemoteAudio(remotePeerId) {
+            if (!localStream) return;
+            const call = peer.call(remotePeerId, localStream);
+            audioCall = call;
+            call.on("stream", (remoteStream) => {
+                playRemoteAudio(remoteStream);
+            });
+        }
+
+        function playRemoteAudio(remoteStream) {
+            let audioElem = document.getElementById("audio-player");
             if (!audioElem) {
                 audioElem = document.createElement("audio");
-                audioElem.id = "audio-" + peerId;
+                audioElem.id = "audio-player";
                 audioElem.autoplay = true;
                 document.getElementById("audio-container").appendChild(audioElem);
             }
@@ -477,56 +533,40 @@
         }
 
         btnStartGame.addEventListener("click", () => {
-            if (players.length < 3) {
-                return alert("Necessário no mínimo 3 jogadores para jogar!");
+            if (players.length !== 2) {
+                return alert("A partida precisa de exatamente 2 jogadores!");
             }
 
-            const randomLocation = GAME_LOCATIONS[Math.floor(Math.random() * GAME_LOCATIONS.length)];
-            const spyIndex = Math.floor(Math.random() * players.length);
-            const spyId = players[spyIndex].id;
+            const chosenLocation = GAME_LOCATIONS[Math.floor(Math.random() * GAME_LOCATIONS.length)];
+            const hostIsAgent = Math.random() > 0.5;
 
-            let availableRoles = [...randomLocation.roles];
-            availableRoles.sort(() => Math.random() - 0.5);
+            const hostPayload = {
+                type: "GAME_START",
+                isAgent: hostIsAgent,
+                location: hostIsAgent ? chosenLocation.name : "Desconhecido",
+                password: hostIsAgent ? chosenLocation.password : null,
+                hint: hostIsAgent ? chosenLocation.hint : null,
+                duration: 180
+            };
 
-            players.forEach((p, index) => {
-                const isSpy = p.id === spyId;
-                const role = isSpy ? "Clandestino" : (availableRoles[index % availableRoles.length] || "Passageiro");
-                const payload = {
-                    type: "GAME_START",
-                    isSpy: isSpy,
-                    location: isSpy ? "Desconhecido" : randomLocation.name,
-                    role: role,
-                    duration: 300
-                };
+            const clientPayload = {
+                type: "GAME_START",
+                isAgent: !hostIsAgent,
+                location: !hostIsAgent ? chosenLocation.name : "Desconhecido",
+                password: !hostIsAgent ? chosenLocation.password : null,
+                hint: !hostIsAgent ? chosenLocation.hint : null,
+                duration: 180
+            };
 
-                if (p.id === peer.id) {
-                    startGameScreen(payload);
-                } else {
-                    const targetConn = roomConnections.find(c => c.peer === p.id);
-                    if (targetConn) targetConn.send(payload);
-                }
-            });
-
+            startGameScreen(hostPayload);
+            sendToClient(clientPayload);
             btnEndGame.classList.remove("hidden");
         });
 
         btnEndGame.addEventListener("click", () => {
-            broadcast({ type: "GAME_END" });
+            sendToClient({ type: "GAME_END" });
             endGameScreen();
         });
-
-        function handleHostData(data, conn) {}
-
-        function handleClientData(data) {
-            if (data.type === "PLAYER_LIST") {
-                players = data.players;
-                renderPlayers();
-            } else if (data.type === "GAME_START") {
-                startGameScreen(data);
-            } else if (data.type === "GAME_END") {
-                endGameScreen();
-            }
-        }
 
         function showLobby(code) {
             displayRoomCode.innerText = code;
@@ -539,7 +579,7 @@
             playersList.innerHTML = "";
             players.forEach(p => {
                 const li = document.createElement("li");
-                li.innerText = p.name + (p.isHost ? " 👑" : "");
+                li.innerText = p.name + (p.isHost ? " (Anfitrião)" : " (Visitante)");
                 playersList.appendChild(li);
             });
         }
@@ -548,16 +588,18 @@
             screenLobby.classList.add("hidden");
             screenGame.classList.remove("hidden");
 
-            if (info.isSpy) {
-                roleTitle.innerText = "🕵️ Você é o Clandestino!";
-                roleTitle.style.color = "#ef4444";
-                locationText.innerText = "Local: Descubra onde eles estão!";
-                jobText.innerText = "Mecânica: Não seja descoberto.";
-            } else {
-                roleTitle.innerText = "Passageiro";
+            if (info.isAgent) {
+                gameObjective.innerHTML = "<strong>SUA MISSÃO (AGENTE):</strong> Você sabe onde está. O outro jogador vai interrogá-lo pelo microfone. Responda com pistas sutis sem dizer o nome do local ou a palavra-chave.";
+                roleTitle.innerText = "🕶️ Você é o Agente Secreto";
                 roleTitle.style.color = "#38bdf8";
-                locationText.innerText = "Local: " + info.location;
-                jobText.innerText = "Função: " + info.role;
+                locationText.innerText = "Local Atual: " + info.location;
+                jobText.innerText = "Palavra-Chave Secreta: " + info.password;
+            } else {
+                gameObjective.innerHTML = "<strong>SUA MISSÃO (INTERCEPTADOR):</strong> Você NÃO sabe onde o agente está. Faça perguntas pelo microfone e analise a voz dele para adivinhar qual é o local antes do tempo acabar.";
+                roleTitle.innerText = "📡 Você é o Interceptador";
+                roleTitle.style.color = "#ef4444";
+                locationText.innerText = "Local: Desconhecido";
+                jobText.innerText = "Dica: Interrogue o Agente pelo áudio e tente descobrir o local da lista abaixo.";
             }
 
             locationsList.innerHTML = "";
@@ -577,11 +619,13 @@
             screenLobby.classList.remove("hidden");
             secretCard.classList.remove("revealed");
             secretContent.classList.add("hidden");
+            cardTapNotice.classList.remove("hidden");
         }
 
         secretCard.addEventListener("click", () => {
             secretContent.classList.toggle("hidden");
             secretCard.classList.toggle("revealed");
+            cardTapNotice.classList.toggle("hidden");
         });
 
         function startTimer(seconds) {
@@ -595,7 +639,7 @@
 
                 if (remaining <= 0) {
                     clearInterval(timerInterval);
-                    alert("O tempo da rodada acabou! Iniciem a votação.");
+                    alert("Tempo encerrado! O Interceptador deve declarar seu palpite final.");
                 }
                 remaining--;
             }, 1000);
